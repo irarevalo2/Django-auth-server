@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: restaurant_db
+    restart: always
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-restaurant_db}
+      MYSQL_USER: ${MYSQL_USER:-restaurant_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-restaurant_pass}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpass}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build: .
+    container_name: restaurant_api
+    restart: always
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    environment:
+      - DEBUG=${DEBUG:-1}
+      - MYSQL_DATABASE=${MYSQL_DATABASE:-restaurant_db}
+      - MYSQL_USER=${MYSQL_USER:-restaurant_user}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-restaurant_pass}
+      - MYSQL_HOST=db
+      - MYSQL_PORT=3306
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py runserver 0.0.0.0:8000"
+
+volumes:
+  mysql_data:
+
